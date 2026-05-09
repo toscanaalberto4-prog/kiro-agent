@@ -1,5 +1,5 @@
 /**
- * Aperture3D – Three.js 3D photo carousel + CSS 3D hover tilt grid.
+ * Aperture3D – cinematic Three.js carousel + scroll-reveal tilt grid.
  *
  * Expects `window.Aperture3DData.photos` to be an array of
  * { id, title, url, image } objects (populated by PHP).
@@ -11,20 +11,25 @@
     ? window.Aperture3DData.photos
     : [];
 
+  const prefersReducedMotion =
+    window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   document.addEventListener('DOMContentLoaded', () => {
     initCarousel(data);
     initTiltGrid();
+    initScrollReveal();
+    initKineticTitle();
+    initPageTransitions();
   });
 
   /* ------------------------------------------------------------------ */
-  /*  1. Three.js 3D rotating carousel                                   */
+  /*  1. Cinematic Three.js carousel                                     */
   /* ------------------------------------------------------------------ */
   function initCarousel(photos) {
     const canvas  = document.getElementById('a3d-canvas');
     const loading = document.getElementById('a3d-loading');
     if (!canvas || typeof THREE === 'undefined') return;
 
-    // If there are no photos, just render an ambient scene as a backdrop.
     const sources = photos.length
       ? photos.map(p => p.image)
       : defaultPlaceholders();
@@ -38,17 +43,17 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setClearColor(0x05050a, 1);
 
-    const scene  = new THREE.Scene();
-    scene.fog    = new THREE.Fog(0x05050a, 8, 24);
+    const scene = new THREE.Scene();
+    // Heavier fog for cinematic depth falloff.
+    scene.fog = new THREE.Fog(0x05050a, 6, 22);
 
-    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-    camera.position.set(0, 0.4, 9);
+    const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+    // Start deep and wide — we'll dolly in during the intro.
+    camera.position.set(0, 0.4, 22);
 
-    // Lights – subtle, images supply their own color via MeshBasicMaterial.
     scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
-    // --- Build the carousel ring -------------------------------------
-    const ring  = new THREE.Group();
+    const ring = new THREE.Group();
     scene.add(ring);
 
     const count  = Math.max(sources.length, 6);
@@ -66,10 +71,10 @@
       const angle = (i / count) * Math.PI * 2;
 
       const material = new THREE.MeshBasicMaterial({
-        color:        0x222228,
-        side:         THREE.DoubleSide,
-        transparent:  true,
-        opacity:      0.0,
+        color:       0x222228,
+        side:        THREE.DoubleSide,
+        transparent: true,
+        opacity:     0.0,
       });
 
       const mesh = new THREE.Mesh(
@@ -82,11 +87,9 @@
         0,
         Math.cos(angle) * radius
       );
-      // Face the center of the ring.
       mesh.lookAt(0, 0, 0);
-      mesh.userData.baseY     = 0;
-      mesh.userData.phase     = Math.random() * Math.PI * 2;
-      mesh.userData.angle     = angle;
+      mesh.userData.phase = Math.random() * Math.PI * 2;
+      mesh.userData.angle = angle;
       ring.add(mesh);
       meshes.push(mesh);
 
@@ -97,18 +100,12 @@
           tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
           material.map   = tex;
           material.color.set(0xffffff);
-          // Fade in.
-          const fade = () => {
-            material.opacity = Math.min(material.opacity + 0.04, 1);
-            if (material.opacity < 1) requestAnimationFrame(fade);
-          };
-          fade();
           material.needsUpdate = true;
           loaded += 1;
           if (loaded >= Math.min(sources.length, 4) && loading) {
             loading.style.opacity    = '0';
-            loading.style.transition = 'opacity .6s ease';
-            setTimeout(() => loading.remove(), 800);
+            loading.style.transition = 'opacity 1s ease';
+            setTimeout(() => loading.remove(), 1200);
           }
         },
         undefined,
@@ -116,15 +113,22 @@
       );
     }
 
-    // --- Pointer drag / wheel controls -------------------------------
+    // --- Interaction + cinematic intro state -------------------------
     const state = {
       rotationY:       0,
       targetRotation:  0,
-      velocity:        0.0015, // idle auto-rotation
+      velocity:        0.0008, // slower idle drift
       dragging:        false,
       lastX:           0,
-      cameraZ:         9,
-      targetCameraZ:   9,
+      cameraZ:         22,
+      targetCameraZ:   prefersReducedMotion ? 9 : 9.5,
+      mouseX:          0,
+      mouseY:          0,
+      targetMouseX:    0,
+      targetMouseY:    0,
+      fov:             38,
+      targetFov:       prefersReducedMotion ? 55 : 55,
+      introProgress:   0, // 0 → 1
     };
 
     canvas.addEventListener('pointerdown', (e) => {
@@ -134,23 +138,32 @@
       canvas.setPointerCapture(e.pointerId);
     });
     canvas.addEventListener('pointermove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      state.targetMouseX = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      state.targetMouseY = ((e.clientY - rect.top)  / rect.height) * 2 - 1;
+
       if (!state.dragging) return;
       const dx = e.clientX - state.lastX;
       state.lastX = e.clientX;
-      state.targetRotation += dx * 0.005;
-      state.velocity       = dx * 0.0008;
+      state.targetRotation += dx * 0.004;
+      state.velocity       = dx * 0.0006;
     });
     const stopDrag = () => { state.dragging = false; };
     canvas.addEventListener('pointerup',     stopDrag);
     canvas.addEventListener('pointercancel', stopDrag);
-    canvas.addEventListener('pointerleave',  stopDrag);
+    canvas.addEventListener('pointerleave',  () => {
+      state.dragging     = false;
+      state.targetMouseX = 0;
+      state.targetMouseY = 0;
+    });
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
-      state.targetCameraZ = clamp(state.targetCameraZ + e.deltaY * 0.003, 6, 14);
+      // Slower, eased zoom.
+      state.targetCameraZ = clamp(state.targetCameraZ + e.deltaY * 0.002, 6.5, 13);
     }, { passive: false });
 
-    // --- Resize handling ---------------------------------------------
+    // --- Resize ------------------------------------------------------
     const resize = () => {
       const hero = canvas.parentElement;
       const w = hero.clientWidth;
@@ -162,29 +175,60 @@
     resize();
     window.addEventListener('resize', resize);
 
-    // --- Animation loop ----------------------------------------------
+    // --- Main loop ---------------------------------------------------
     const clock = new THREE.Clock();
-    const tick = () => {
-      const dt = clock.getDelta();
-      const t  = clock.elapsedTime;
+    const introDuration = prefersReducedMotion ? 0.5 : 2.8;
 
+    const tick = () => {
+      const t  = clock.elapsedTime;
+      const dt = Math.min(clock.getDelta(), 0.05);
+
+      // Cinematic intro easing: camera dollies in + FOV widens.
+      if (state.introProgress < 1) {
+        state.introProgress = Math.min(1, state.introProgress + dt / introDuration);
+        const e = easeInOutCubic(state.introProgress);
+        camera.position.z = lerp(22, state.targetCameraZ, e);
+        camera.fov        = lerp(38, state.targetFov, e);
+        camera.updateProjectionMatrix();
+
+        // Fade each card in with a staggered delay during the intro.
+        meshes.forEach((m, i) => {
+          const stagger = clamp(state.introProgress * meshes.length - i * 0.35, 0, 1);
+          m.material.opacity = easeOutCubic(stagger);
+        });
+      } else {
+        // Post-intro: handle user-driven zoom & maintain opacity.
+        state.cameraZ += (state.targetCameraZ - state.cameraZ) * 0.05;
+        camera.position.z = state.cameraZ;
+        meshes.forEach((m) => { m.material.opacity = 1; });
+      }
+
+      // Idle auto-rotation (very slow, very cinematic).
       if (!state.dragging) {
         state.targetRotation += state.velocity;
-        state.velocity *= 0.96;
-        if (Math.abs(state.velocity) < 0.0002) state.velocity = 0.0015;
+        state.velocity *= 0.97;
+        if (Math.abs(state.velocity) < 0.0001) state.velocity = 0.0008;
       }
-      state.rotationY += (state.targetRotation - state.rotationY) * 0.08;
+      state.rotationY += (state.targetRotation - state.rotationY) * 0.04;
       ring.rotation.y = state.rotationY;
 
-      state.cameraZ += (state.targetCameraZ - state.cameraZ) * 0.08;
-      camera.position.z = state.cameraZ;
-      camera.position.y = Math.sin(t * 0.3) * 0.2 + 0.4;
+      // Mouse parallax — camera drifts with cursor.
+      state.mouseX += (state.targetMouseX - state.mouseX) * 0.03;
+      state.mouseY += (state.targetMouseY - state.mouseY) * 0.03;
+      camera.position.x = state.mouseX * 0.9;
+      camera.position.y = Math.sin(t * 0.25) * 0.18 + 0.4 - state.mouseY * 0.5;
       camera.lookAt(0, 0, 0);
 
-      // Subtle bobbing per-card.
+      // Card bobbing.
       meshes.forEach((m) => {
-        m.position.y = Math.sin(t * 0.8 + m.userData.phase) * 0.15;
+        m.position.y = Math.sin(t * 0.6 + m.userData.phase) * 0.12;
       });
+
+      // Subtle FOV "breathe" for cinematic feel.
+      if (state.introProgress >= 1) {
+        camera.fov = 55 + Math.sin(t * 0.25) * 0.6;
+        camera.updateProjectionMatrix();
+      }
 
       renderer.render(scene, camera);
       requestAnimationFrame(tick);
@@ -193,14 +237,9 @@
   }
 
   function defaultPlaceholders() {
-    // Tiny SVG gradients so the canvas isn't empty before any photos exist.
     const colors = [
-      ['#1e1e2a', '#3b2a56'],
-      ['#24242e', '#205063'],
-      ['#2a1e2a', '#6a3a3a'],
-      ['#1e2a24', '#2f6a4a'],
-      ['#2a2418', '#7a5a22'],
-      ['#181824', '#444488'],
+      ['#1e1e2a', '#3b2a56'], ['#24242e', '#205063'], ['#2a1e2a', '#6a3a3a'],
+      ['#1e2a24', '#2f6a4a'], ['#2a2418', '#7a5a22'], ['#181824', '#444488'],
     ];
     return colors.map(([a, b]) => {
       const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='512' height='640'>
@@ -213,28 +252,125 @@
     });
   }
 
+  function lerp(a, b, t) { return a + (b - a) * t; }
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+  function easeInOutCubic(t) { return t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3) / 2; }
+  function easeOutCubic(t)   { return 1 - Math.pow(1 - t, 3); }
 
   /* ------------------------------------------------------------------ */
-  /*  2. CSS 3D tilt on the gallery grid (pointer-based parallax)        */
+  /*  2. Tilt + scroll reveal on the gallery grid                        */
   /* ------------------------------------------------------------------ */
   function initTiltGrid() {
     const cards = document.querySelectorAll('.a3d-card');
-    if (!cards.length) return;
+    if (!cards.length || prefersReducedMotion) return;
 
     cards.forEach((card) => {
       card.addEventListener('pointermove', (e) => {
+        if (!card.classList.contains('is-revealed')) return;
         const r  = card.getBoundingClientRect();
         const x  = (e.clientX - r.left) / r.width;
         const y  = (e.clientY - r.top)  / r.height;
-        const rx = (0.5 - y) * 14; // degrees
-        const ry = (x - 0.5) * 18;
+        const rx = (0.5 - y) * 12;
+        const ry = (x - 0.5) * 16;
         card.style.transform =
-          `perspective(900px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(10px)`;
+          `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(10px)`;
       });
       card.addEventListener('pointerleave', () => {
-        card.style.transform = 'perspective(900px) rotateX(0) rotateY(0) translateZ(0)';
+        card.style.transform = '';
       });
+    });
+  }
+
+  function initScrollReveal() {
+    const cards = document.querySelectorAll('.a3d-card');
+    if (!cards.length) return;
+
+    if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+      cards.forEach(c => c.classList.add('is-revealed'));
+      return;
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry, idx) => {
+        if (entry.isIntersecting) {
+          // Stagger reveal slightly based on the batch index.
+          setTimeout(() => entry.target.classList.add('is-revealed'), idx * 80);
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+
+    cards.forEach(c => io.observe(c));
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  3. Kinetic title: letters fade & rise                              */
+  /* ------------------------------------------------------------------ */
+  function initKineticTitle() {
+    const el = document.querySelector('.a3d-hero-overlay h1');
+    if (!el || el.dataset.kinetic === '1') return;
+    el.dataset.kinetic = '1';
+
+    const text = el.textContent;
+    el.textContent = '';
+    el.setAttribute('aria-label', text);
+
+    const words = text.split(/(\s+)/);
+    let letterIndex = 0;
+    words.forEach((word) => {
+      if (/^\s+$/.test(word)) {
+        el.appendChild(document.createTextNode(word));
+        return;
+      }
+      const wrap = document.createElement('span');
+      wrap.className = 'a3d-word';
+      [...word].forEach((ch) => {
+        const s = document.createElement('span');
+        s.className = 'a3d-letter';
+        s.textContent = ch;
+        s.style.animationDelay = (0.4 + letterIndex * 0.045) + 's';
+        letterIndex += 1;
+        wrap.appendChild(s);
+      });
+      el.appendChild(wrap);
+    });
+    el.classList.add('a3d-kinetic');
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  4. Cinematic page fade on internal navigation                      */
+  /* ------------------------------------------------------------------ */
+  function initPageTransitions() {
+    if (prefersReducedMotion) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'a3d-page-fade';
+    document.body.appendChild(overlay);
+
+    // Trigger fade-in once the page has mounted.
+    requestAnimationFrame(() => overlay.classList.add('is-ready'));
+
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (!href || href.startsWith('#') || link.target === '_blank') return;
+      if (link.hasAttribute('download')) return;
+
+      // Only fade for same-origin navigations.
+      let url;
+      try { url = new URL(href, window.location.href); }
+      catch (_) { return; }
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.hash) return;
+
+      e.preventDefault();
+      overlay.classList.add('is-fading');
+      setTimeout(() => { window.location.href = url.href; }, 520);
+    });
+
+    window.addEventListener('pageshow', () => {
+      overlay.classList.remove('is-fading');
     });
   }
 })();
