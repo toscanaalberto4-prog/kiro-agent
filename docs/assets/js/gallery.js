@@ -308,10 +308,15 @@
   /* ------------------------------------------------------------------ */
   function initPageTransitions() {
     if (prefersReducedMotion) return;
-    const overlay = document.createElement('div');
-    overlay.className = 'a3d-page-fade';
-    document.body.appendChild(overlay);
-    requestAnimationFrame(() => overlay.classList.add('is-ready'));
+
+    // Letterbox: two bars slide in from top & bottom, meet, the page navigates.
+    const letterbox = document.createElement('div');
+    letterbox.className = 'a3d-letterbox';
+    letterbox.innerHTML = '<div class="a3d-bar a3d-bar-top"></div><div class="a3d-bar a3d-bar-bottom"></div>';
+    document.body.appendChild(letterbox);
+
+    // On page load, the bars retract (cinematic "open" on entry).
+    requestAnimationFrame(() => letterbox.classList.add('is-open'));
 
     document.addEventListener('click', (e) => {
       const link = e.target.closest('a');
@@ -324,10 +329,16 @@
       if (url.origin !== window.location.origin) return;
       if (url.pathname === window.location.pathname && url.hash) return;
       e.preventDefault();
-      overlay.classList.add('is-fading');
-      setTimeout(() => { window.location.href = url.href; }, 520);
+      // Close the letterbox, then navigate.
+      letterbox.classList.remove('is-open');
+      letterbox.classList.add('is-closing');
+      setTimeout(() => { window.location.href = url.href; }, 720);
     });
-    window.addEventListener('pageshow', () => overlay.classList.remove('is-fading'));
+
+    window.addEventListener('pageshow', () => {
+      letterbox.classList.remove('is-closing');
+      requestAnimationFrame(() => letterbox.classList.add('is-open'));
+    });
   }
 
   /* ------------------------------------------------------------------ */

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contact &mdash; Aperture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <script src="./assets/js/photos.js" defer></script>
+  <script src="./assets/js/gallery.js" defer></script>
+</head>
+<body>
+
+<header class="site-header" role="banner">
+  <div class="site-branding">
+    <p class="site-title"><a href="./index.html">Aperture</a></p>
+  </div>
+  <nav class="main-navigation" aria-label="Primary">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./gallery.html">Gallery</a></li>
+      <li><a href="./about.html">About</a></li>
+      <li><a href="./contact.html">Contact</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="site-main" class="site-main">
+  <section class="a3d-container a3d-contact">
+    <h1>Contact</h1>
+    <p class="a3d-contact-intro">
+      For commissions, prints, or anything else &mdash; send a message.
+      A reply usually arrives within a day or two.
+    </p>
+
+    <form class="a3d-form" id="a3d-contact-form"
+          action="mailto:hello@aperture.example"
+          method="post"
+          enctype="text/plain"
+          novalidate>
+      <label>
+        <span>Name</span>
+        <input type="text" name="name" required autocomplete="name">
+      </label>
+
+      <label>
+        <span>Email</span>
+        <input type="email" name="email" required autocomplete="email">
+      </label>
+
+      <label>
+        <span>Subject</span>
+        <input type="text" name="subject" placeholder="What is this about?">
+      </label>
+
+      <label>
+        <span>Message</span>
+        <textarea name="message" rows="6" required
+                  placeholder="Tell me about the project, the shoot, the idea..."></textarea>
+      </label>
+
+      <button type="submit" class="a3d-button">Send Message</button>
+      <p class="a3d-form-hint">
+        Your email client will open with a pre-filled message.
+        <br>To use a real form backend (Formspree, Netlify, etc.), change the
+        <code>action</code> attribute on this form.
+      </p>
+    </form>
+
+    <div class="a3d-contact-meta">
+      <div>
+        <h3>Email</h3>
+        <p><a href="mailto:hello@aperture.example">hello@aperture.example</a></p>
+      </div>
+      <div>
+        <h3>Studio</h3>
+        <p>By appointment only.<br>Replies within 24–48 hrs.</p>
+      </div>
+      <div>
+        <h3>Elsewhere</h3>
+        <p><a href="#">Instagram</a> &middot; <a href="#">Behance</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <p>&copy; 2026 Aperture &middot; Built with Aperture3D &middot; Photos via <a href="https://unsplash.com">Unsplash</a></p>
+</footer>
+
+</body>
+</html>
