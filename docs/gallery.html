@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Gallery &mdash; Aperture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://picsum.photos">
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <script src="./assets/js/photos.js" defer></script>
+  <script src="./assets/js/gallery.js" defer></script>
+</head>
+<body>
+
+<header class="site-header" role="banner">
+  <div class="site-branding">
+    <p class="site-title"><a href="./index.html">Aperture</a></p>
+  </div>
+  <nav class="main-navigation" aria-label="Primary">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./gallery.html">Gallery</a></li>
+      <li><a href="./about.html">About</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="site-main" class="site-main">
+
+  <section class="a3d-gallery a3d-container" style="padding-top: 8rem;">
+    <h2>Gallery</h2>
+    <p style="text-align:center; color:#9a9aa0; margin-top:-2rem; margin-bottom:3rem; letter-spacing:.2em; text-transform:uppercase; font-size:.75rem;">
+      The complete collection
+    </p>
+    <div class="a3d-grid" id="a3d-tilt-grid" data-full="1"><!-- populated by gallery.js --></div>
+  </section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <p>&copy; 2026 Aperture &middot; Built with Aperture3D</p>
+</footer>
+
+</body>
+</html>

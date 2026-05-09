@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Aperture &mdash; Cinematic Photography</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A cinematic 3D photography portfolio.">
+  <link rel="preconnect" href="https://picsum.photos">
+  <link rel="stylesheet" href="./assets/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+  <script src="./assets/js/photos.js" defer></script>
+  <script src="./assets/js/gallery.js" defer></script>
+</head>
+<body>
+
+<header class="site-header" role="banner">
+  <div class="site-branding">
+    <p class="site-title"><a href="./index.html">Aperture</a></p>
+  </div>
+  <nav class="main-navigation" aria-label="Primary">
+    <ul>
+      <li><a href="./index.html">Home</a></li>
+      <li><a href="./gallery.html">Gallery</a></li>
+      <li><a href="./about.html">About</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="site-main" class="site-main">
+
+  <section class="a3d-hero" id="a3d-hero">
+    <div class="a3d-loading" id="a3d-loading">Loading gallery</div>
+    <canvas id="a3d-canvas" aria-label="3D rotating photo carousel"></canvas>
+
+    <div class="a3d-hero-overlay">
+      <h1>Aperture</h1>
+      <p>A cinematic journey through light, shadow, and perspective.</p>
+      <span class="a3d-hint">Drag to rotate &middot; Scroll to zoom</span>
+    </div>
+  </section>
+
+  <section class="a3d-gallery a3d-container">
+    <h2>Featured Work</h2>
+    <div class="a3d-grid" id="a3d-tilt-grid"><!-- populated by gallery.js --></div>
+    <p style="text-align:center; margin-top:3rem;">
+      <a href="./gallery.html" class="a3d-button">View Full Gallery &rarr;</a>
+    </p>
+  </section>
+
+</main>
+
+<footer class="site-footer" role="contentinfo">
+  <p>&copy; 2026 Aperture &middot; Built with Aperture3D</p>
+</footer>
+
+</body>
+</html>
